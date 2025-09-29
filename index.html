@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Stellar Voyager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            /* CHANGED: Added CSS to prevent unwanted mobile gestures like text selection or callout menus */
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10+ */
+            user-select: none;
+            -webkit-touch-callout: none; /* iOS Safari */
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            background: #000; /* Void black deep space */
+        }
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none; /* Pass clicks through to canvas unless on a button */
+        }
+        .ui-screen {
+            pointer-events: auto; /* Re-enable pointer events for UI elements */
+        }
+        /* CHANGED: Added a rule to prevent accidental zooming/panning when interacting with controls */
+        .control-btn {
+            touch-action: manipulation;
+        }
+        #main-menu.ui-screen, #how-to-play-screen.ui-screen {
+            background-color: transparent;
+            backdrop-filter: none;
+        }
+        #main-menu h1 {
+            color: #00f3ff;
+            text-shadow: 0 0 8px #00f3ff, 0 0 12px #00f3ff;
+        }
+        #main-menu p {
+            color: #00f3ff;
+            text-shadow: 0 0 10px #00f3ff;
+            opacity: 0.9;
+        }
+        #main-menu .btn, #how-to-play-screen .btn {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #00f3ff;
+            color: #00f3ff;
+            text-shadow: none;
+            box-shadow: none;
+            border-radius: 12px;
+            transition: 0.3s;
+        }
+        #main-menu .btn:hover, #how-to-play-screen .btn:hover {
+            background: #00f3ff;
+            color: black;
+            box-shadow: 0 0 20px #00f3ff;
+        }
+        .btn {
+            @apply px-8 py-3 rounded-md text-white font-bold uppercase tracking-wider transition-all duration-300 shadow-lg;
+            border: 2px solid #00aaff;
+            background: linear-gradient(45deg, #003366, #0055aa);
+            text-shadow: 0 0 5px #00aaff;
+        }
+        .btn:hover {
+            @apply shadow-2xl;
+            background: linear-gradient(45deg, #0055aa, #0077cc);
+            box-shadow: 0 0 15px #00aaff, 0 0 25px #00aaff;
+        }
+        .control-btn {
+            @apply w-14 h-14 rounded-full flex items-center justify-center transition-transform duration-100 active:scale-90;
+            background-color: rgba(0, 170, 255, 0.2);
+            border: 2px solid rgba(0, 170, 255, 0.5);
+            color: rgba(255, 255, 255, 0.8);
+            pointer-events: auto;
+        }
+        #boost-btn {
+            @apply w-16 h-16 bg-red-900/50 border-red-500/50 text-red-400;
+        }
+        #boost-btn.active {
+            @apply bg-cyan-500/50 border-cyan-300 text-cyan-200 animate-pulse;
+        }
+        .orb-example {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 150, 1) 0%, rgba(255, 165, 0, 0.8) 100%);
+            box-shadow: 0 0 15px yellow;
+        }
+        .portal-example {
+            width: 50px; height: 50px; border-radius: 50%;
+            background: radial-gradient(circle, white 10%, cyan 60%, rgba(0, 255, 255, 0) 100%);
+        }
+    </style>
+</head>
+<body class="bg-black">
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="loading-indicator" class="absolute inset-0 z-50 flex items-center justify-center bg-black text-white text-3xl">
+        <p>Loading Mission...</p>
+    </div>
+
+    <div class="ui-layer">
+        <div id="audio-toggle-btn" class="absolute top-5 right-5 z-20 cursor-pointer pointer-events-auto p-3 rounded-full bg-black/50 hover:bg-white/20 transition-colors">
+            <svg id="sound-off-icon" xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="currentColor" class="bi bi-volume-mute-fill" viewBox="0 0 16 16">
+                <path d="M6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10H1.5A.5.5 0 0 1 1 9.5v-3A.5.5 0 0 1 1.5 6H3.825l2.363-2.39a.5.5 0 0 1 .529-.06zM10.025 8.518a.5.5 0 0 1 .217.585l-.75 2.5a.5.5 0 0 1-.948-.287l.75-2.5a.5.5 0 0 1 .731-.298zm-2.12-2.12a.5.5 0 0 1 .708 0L10.07 7.93l1.46-1.46a.5.5 0 0 1 .708.708L10.778 8.64l1.46 1.46a.5.5 0 0 1-.708.708L10.07 9.348l-1.46 1.46a.5.5 0 0 1-.708-.708L9.362 8.64 7.901 7.18a.5.5 0 0 1 0-.708z"/>
+            </svg>
+            <svg id="sound-on-icon" xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="currentColor" class="bi bi-volume-up-fill hidden" viewBox="0 0 16 16">
+                <path d="M11.536 14.01A8.473 8.473 0 0 0 14.026 8a8.473 8.473 0 0 0-2.49-6.01l-.708.707A7.476 7.476 0 0 1 13.025 8c0 2.071-.84 3.946-2.197 5.303l.708.707z"/>
+                <path d="M10.121 12.596A6.48 6.48 0 0 0 12.025 8a6.48 6.48 0 0 0-1.904-4.596l-.707.707A5.483 5.483 0 0 1 11.025 8a5.483 5.483 0 0 1-1.61 3.89l.706.706z"/>
+                <path d="M8.707 11.182A4.486 4.486 0 0 0 10.025 8a4.486 4.486 0 0 0-1.318-3.182L8 5.525A3.489 3.489 0 0 1 9.025 8 3.49 3.49 0 0 1 8 10.475l.707.707zM6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10H1.5A.5.5 0 0 1 1 9.5v-3A.5.5 0 0 1 1.5 6H3.825l2.363-2.39a.5.5 0 0 1 .529-.06z"/>
+            </svg>
+        </div>
+
+        <div id="main-menu" class="ui-screen w-full h-full flex flex-col items-center justify-center space-y-6 p-4 overflow-y-auto">
+            <h1 class="text-5xl sm:text-6xl md:text-8xl font-bold text-center">Stellar Voyager</h1>
+            
+            <div class="max-w-3xl text-center text-base sm:text-lg space-y-3 font-normal">
+                <p>Year 2242. The outer colonies have gone dark. A mysterious gravitational anomaly is expanding, consuming star systems one by one.</p>
+                <p>You are the lone pilot of the XV-Stellar Voyager, the only ship fast enough to navigate the chaotic gravity wells and reach the source.</p>
+                <p>Your mission: collect the scattered energy orbs to power the ship's unique anti-gravity drive, and escape through the portal before the anomaly collapses. The fate of the outer worlds rests on your shoulders.</p>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
+                <div class="flex flex-col items-center">
+                    <button id="start-btn" class="btn text-xl sm:text-2xl">Start Mission</button>
+                    <div id="difficulty-select" class="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-4 max-h-0 overflow-hidden transition-all duration-700 ease-in-out">
+                        <button data-level="1" class="btn difficulty-btn text-base sm:text-lg mt-2 sm:mt-0">Easy</button>
+                        <button data-level="2" class="btn difficulty-btn text-base sm:text-lg">Intermediate</button>
+                        <button data-level="3" class="btn difficulty-btn text-base sm:text-lg">Difficult</button>
+                    </div>
+                </div>
+                <button id="how-to-play-btn" class="btn text-lg sm:text-xl">How to Play</button>
+            </div>
+        </div>
+
+        <div id="game-over-screen" class="absolute inset-0 hidden flex items-center justify-center bg-black/70 backdrop-blur-sm pointer-events-auto">
+            <div class="bg-black border-2 border-red-500/50 rounded-lg p-6 sm:p-10 flex flex-col items-center space-y-8 shadow-2xl shadow-red-500/20">
+                <h2 class="text-4xl sm:text-5xl md:text-7xl font-bold text-red-500" style="text-shadow: 0 0 10px #ff0000;">Mission Failed</h2>
+                <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                    <button id="try-again-btn" class="btn">Try Again</button>
+                    <button id="quit-btn" class="btn">Quit</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="mission-complete-screen" class="absolute inset-0 hidden flex items-center justify-center bg-black/70 backdrop-blur-sm pointer-events-auto">
+            <div class="bg-black border-2 border-cyan-500/50 rounded-lg p-6 sm:p-10 flex flex-col items-center space-y-8 shadow-2xl shadow-cyan-500/20 text-center">
+                <h2 id="level-complete-text" class="text-3xl sm:text-4xl md:text-6xl font-bold text-cyan-400" style="text-shadow: 0 0 10px #00ffff;">Level Cleared</h2>
+                <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                    <button id="next-mission-btn" class="btn">Next Mission</button>
+                    <button id="repeat-mission-btn" class="btn">Repeat Mission</button>
+                    <button id="quit-mission-btn" class="btn">Quit</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="final-congrats-screen" class="absolute inset-0 hidden flex items-center justify-center bg-black/70 backdrop-blur-sm pointer-events-auto">
+             <div class="bg-black border-2 border-yellow-400/50 rounded-lg p-6 sm:p-10 flex flex-col items-center space-y-8 shadow-2xl shadow-yellow-400/20 text-center max-w-4xl mx-4">
+                 <h2 class="text-4xl sm:text-5xl md:text-7xl font-bold text-yellow-300" style="text-shadow: 0 0 15px #FFD700;">Anomaly Stabilized</h2>
+                 <p class="text-xl sm:text-2xl text-white">You've reached the heart of the anomaly and reversed its collapse.</p>
+                 <p class="text-base sm:text-lg text-cyan-200/90 font-normal">The outer colonies are saved. Your courage has etched a new constellation in the halls of heroes. The name 'Stellar Voyager' will be whispered across the galaxy for generations.</p>
+                 <p class="text-lg sm:text-xl text-white mt-4">Thank you for playing.</p>
+                 <div class="flex mt-6">
+                     <button id="final-quit-btn" class="btn">Return to Menu</button>
+                 </div>
+             </div>
+        </div>
+
+        <div id="how-to-play-screen" class="ui-screen w-full h-full hidden flex-col items-center justify-center p-4 md:p-8 overflow-y-auto">
+            <h2 class="text-4xl md:text-6xl font-bold text-cyan-400 mb-8" style="text-shadow: 0 0 10px #00ffff;">How to Play</h2>
+            
+            <div class="flex flex-col md:flex-row items-start justify-center gap-8 w-full max-w-6xl">
+                
+                <div class="w-full md:w-1/2 space-y-4 text-base sm:text-lg text-left">
+                    <p><strong class="text-cyan-400">OBJECTIVE:</strong> Navigate your rocket to the swirling cyan portal at the end of the level.</p>
+                    <p><strong class="text-cyan-400">CONTROLS:</strong> Use the Arrow Keys or WASD to fire your maneuvering thrusters.</p>
+                    <p><strong class="text-cyan-400">GRAVITY:</strong> Planets and black holes have powerful gravity. Don't get pulled in!</p>
+                    <p><strong class="text-cyan-400">BOOST ORBS:</strong> Collect glowing yellow orbs to power your boost. Use Spacebar or the center button to activate a boost, which temporarily reverses gravity's pull!</p>
+                </div>
+                
+                <div class="w-full md:w-1/2">
+                    <h3 class="text-2xl text-center md:text-left font-bold text-cyan-400 mb-4">Visual Guide</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-4 bg-black/30 p-3 rounded-lg">
+                            <div class="w-16 sm:w-20 flex-shrink-0 flex justify-center items-center">
+                                <img src="assets/planet01.png" alt="Planet Example" class="w-12 h-12 sm:w-16 sm:h-16">
+                            </div>
+                            <p class="text-sm sm:text-base flex-1"><strong class="text-cyan-400">Planets:</strong> Exert gravitational pull. Avoid crashing into them. They come in various sizes and appearances.</p>
+                        </div>
+                        <div class="flex items-center space-x-4 bg-black/30 p-3 rounded-lg">
+                            <div class="w-16 sm:w-20 flex-shrink-0 flex justify-center items-center">
+                                <img src="assets/blackhole.png" alt="Black Hole Example" class="w-16 h-16 sm:w-20 sm:h-20">
+                            </div>
+                            <p class="text-sm sm:text-base flex-1"><strong class="text-cyan-400">Black Holes:</strong> Extremely powerful gravity. Getting too close is dangerous. Steer clear!</p>
+                        </div>
+                        <div class="flex items-center space-x-4 bg-black/30 p-3 rounded-lg">
+                            <div class="w-16 sm:w-20 flex-shrink-0 flex justify-center items-center">
+                                <div class="orb-example"></div>
+                            </div>
+                            <p class="text-sm sm:text-base flex-1"><strong class="text-cyan-400">Energy Orbs:</strong> Collect these to charge your boost ability. You need them to survive.</p>
+                        </div>
+                        <div class="flex items-center space-x-4 bg-black/30 p-3 rounded-lg">
+                            <div class="w-16 sm:w-20 flex-shrink-0 flex justify-center items-center">
+                                <div class="portal-example"></div>
+                            </div>
+                            <p class="text-sm sm:text-base flex-1"><strong class="text-cyan-400">Exit Portal:</strong> Your goal. Navigate to this swirling vortex to complete the level.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="back-btn" class="btn mt-8">Back to Menu</button>
+        </div>
+        
+        <div id="in-game-ui" class="hidden">
+             <div class="absolute bottom-4 left-4 grid grid-cols-3 grid-rows-3 gap-2 w-40 h-40 sm:w-48 sm:h-48">
+                 <div class="col-start-2 row-start-1">
+                     <button id="up-btn" class="control-btn w-full h-full">▲</button>
+                 </div>
+                 <div class="col-start-1 row-start-2">
+                     <button id="left-btn" class="control-btn w-full h-full">◀</button>
+                 </div>
+                  <div class="col-start-3 row-start-2">
+                     <button id="right-btn" class="control-btn w-full h-full">▶</button>
+                 </div>
+                 <div class="col-start-2 row-start-3">
+                     <button id="down-btn" class="control-btn w-full h-full">▼</button>
+                 </div>
+                 <div class="col-start-2 row-start-2">
+                      <button id="boost-btn" class="control-btn w-full h-full">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-lightning-charge-fill" viewBox="0 0 16 16">
+                              <path d="M11.251.068a.5.5 0 0 1 .227.58L9.677 7.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09z"/>
+                          </svg>
+                      </button>
+                 </div>
+             </div>
+             <div class="absolute top-4 left-4">
+                 <div id="level-display" class="text-lg sm:text-xl font-bold bg-black/50 p-2 rounded-lg" style="text-shadow: 0 0 5px #00aaff;"></div>
+             </div>
+             <div class="absolute top-4 right-20 sm:right-4">
+                  <div id="orb-counter" class="text-lg sm:text-xl font-bold bg-black/50 p-2 rounded-lg">Orbs: 0</div>
+             </div>
+             <div class="absolute bottom-4 right-4">
+                 <div id="velocity-display" class="text-lg sm:text-xl font-bold bg-black/50 p-2 rounded-lg" style="text-shadow: 0 0 5px #00aaff;">Velocity: 0 km/s</div>
+             </div>
+        </div>
+    </div>
+
+    <script type="module">
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const mainMenu = document.getElementById('main-menu');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const missionCompleteScreen = document.getElementById('mission-complete-screen');
+        const finalCongratsScreen = document.getElementById('final-congrats-screen');
+        const inGameUI = document.getElementById('in-game-ui');
+        const orbCounter = document.getElementById('orb-counter');
+        const howToPlayScreen = document.getElementById('how-to-play-screen');
+        const levelCompleteText = document.getElementById('level-complete-text');
+        const levelDisplay = document.getElementById('level-display');
+        const velocityDisplay = document.getElementById('velocity-display');
+        const difficultySelect = document.getElementById('difficulty-select');
+        const startBtn = document.getElementById('start-btn');
+        const tryAgainBtn = document.getElementById('try-again-btn');
+        const quitBtn = document.getElementById('quit-btn');
+        const nextMissionBtn = document.getElementById('next-mission-btn');
+        const repeatMissionBtn = document.getElementById('repeat-mission-btn');
+        const quitMissionBtn = document.getElementById('quit-mission-btn');
+        const finalQuitBtn = document.getElementById('final-quit-btn');
+        const howToPlayBtn = document.getElementById('how-to-play-btn');
+        const backBtn = document.getElementById('back-btn');
+        const upBtn = document.getElementById('up-btn');
+        const downBtn = document.getElementById('down-btn');
+        const leftBtn = document.getElementById('left-btn');
+        const rightBtn = document.getElementById('right-btn');
+        const boostBtn = document.getElementById('boost-btn');
+        const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+        const allButtons = document.querySelectorAll('button'); // CHANGED: Selected all buttons for easier event handling
+        
+        const audioToggleBtn = document.getElementById('audio-toggle-btn');
+        const soundOnIcon = document.getElementById('sound-on-icon');
+        const soundOffIcon = document.getElementById('sound-off-icon');
+        
+        let isMuted = true;
+        let audioContextPrimed = false;
+
+        const sounds = {
+            menu: new Audio('assets/music/menu.wav'),
+            inGame: new Audio('assets/music/in-game.wav'),
+            beep: new Audio('assets/music/beep-button.ogg'),
+            explosion: new Audio('assets/music/explosion_01.ogg'),
+            missionFailed: new Audio('assets/music/mission-failed.wav'),
+            missionSuccess: new Audio('assets/music/mission-successful.mp3'),
+            orb: new Audio('assets/music/orb-collect.wav'),
+            portal: new Audio('assets/music/portal.ogg'),
+            boost: new Audio('assets/music/boost.mp3')
+        };
+
+        sounds.menu.loop = true;
+        sounds.menu.volume = 0.4;
+        sounds.inGame.loop = true;
+        sounds.inGame.volume = 0.3;
+        sounds.beep.volume = 0.6;
+        
+        function playSound(sound) {
+            if (isMuted || !audioContextPrimed) return;
+            sound.currentTime = 0;
+            sound.play().catch(e => console.warn("Sound play was interrupted or failed:", e));
+        }
+
+        // CHANGED: Created a dedicated function to prime the audio context on the first user interaction.
+        function primeAudioContext() {
+            if (audioContextPrimed) return;
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            if (context.state === 'suspended') {
+                context.resume();
+            }
+            // Play and pause a silent sound to unlock audio on all platforms.
+            const silent = new Audio("data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaXRyYXRlIHN1ZmZpY2VzIHRvIGJ5cGFzcyBhdWRpbyBwb2xpY3k=");
+            silent.play().catch(()=>{});
+            audioContextPrimed = true;
+            console.log("Audio Context Primed.");
+
+            // If audio should be on, start the menu music.
+            if (!isMuted && gameState === 'menu') {
+                sounds.menu.play();
+            }
+        }
+
+        function toggleAudio() {
+            primeAudioContext(); // Ensure context is ready before toggling.
+            isMuted = !isMuted;
+            soundOnIcon.classList.toggle('hidden', isMuted);
+            soundOffIcon.classList.toggle('hidden', !isMuted);
+
+            if (isMuted) {
+                sounds.menu.pause();
+                sounds.inGame.pause();
+            } else {
+                if (gameState === 'menu') {
+                    sounds.menu.currentTime = 0;
+                    sounds.menu.play();
+                } else if (gameState === 'playing') {
+                    sounds.inGame.currentTime = 0;
+                    sounds.inGame.play();
+                }
+            }
+        }
+
+        let gameState = 'menu';
+        let stars = [];
+        let particles = [];
+        let currentLevel = 1;
+
+        let menuStars = [];
+        let menuPlanets = [];
+        
+        const bgImage = new Image();
+        const rocketImage = new Image();
+        const blackHoleImage = new Image();
+        
+        const planetImageFiles = [
+            'planet01.png', 'planet02.png', 'planet03.png', 'planet06.png', 
+            'planet07.png', 'planet08.png', 'planet09.png', 'planet10.png', 
+            'planet11.png', 'planet15.png', 'planet16.png', 'planet17.png'
+        ];
+        const planetImages = [];
+        let imagesToLoad = planetImageFiles.length + 3;
+        let imagesLoaded = 0;
+
+        let worldWidth, worldHeight;
+        let camera = { x: 0, y: 0, smoothing: 0.05 };
+        let rocket, planets, blackHoles, portal, orbs;
+        let G = 0.08;
+        const CONTROLS = { up: false, down: false, left: false, right: false, boost: false, fineControl: false };
+
+        const difficultySettings = {
+            1: { name: 'Easy', planetCount: 24, blackHoleCount: 1, gravityMultiplier: 1.0, portalSize: 35, orbCount: 20 },
+            2: { name: 'Intermediate', planetCount: 24, blackHoleCount: 2, gravityMultiplier: 1.12, portalSize: 30, orbCount: 12 },
+            3: { name: 'Difficult', planetCount: 30, blackHoleCount: 3, gravityMultiplier: 1.24, portalSize: 26, orbCount: 10 }
+        };
+
+        function onImageLoad() {
+            imagesLoaded++;
+            if (imagesLoaded === imagesToLoad) {
+                console.log("All game images loaded successfully.");
+                createMenuPlanets();
+                // CHANGED: Hide loading indicator once assets are ready
+                loadingIndicator.style.display = 'none';
+            }
+        }
+
+        bgImage.onload = onImageLoad;
+        bgImage.src = 'assets/image.png';
+
+        rocketImage.onload = onImageLoad;
+        rocketImage.src = 'assets/rocket.png';
+        
+        blackHoleImage.onload = onImageLoad;
+        blackHoleImage.src = 'assets/blackhole.png';
+
+        planetImageFiles.forEach(fileName => {
+            const img = new Image();
+            img.onload = onImageLoad;
+            img.src = `assets/${fileName}`;
+            planetImages.push(img);
+        });
+        
+        const createRocket = () => ({
+            x: 100, y: window.innerHeight / 2, vx: 1.5, vy: 0,
+            width: 35, height: 50, thrust: 0.0756, orbs: 0,
+            boostActive: false, boostTimer: 0, crashed: false, rotation: 0,
+            gameOverTimer: -1 
+        });
+
+        const createPlanet = () => {
+            const radius = (Math.random() * 60 + 35) * 1.15; 
+            return {
+                x: Math.random() * (worldWidth * 0.9) + (worldWidth * 0.05),
+                y: Math.random() * worldHeight,
+                radius: radius,
+                mass: Math.PI * radius * radius * 0.11,
+                image: planetImages[Math.floor(Math.random() * planetImages.length)]
+            };
+        };
+
+        const createOrb = () => ({ x: Math.random() * worldWidth, y: Math.random() * worldHeight, radius: 8, collected: false });
+
+        function setGameState(newState) {
+            gameState = newState;
+
+            sounds.menu.pause();
+            sounds.inGame.pause();
+
+            // Control audio button visibility
+            if (newState === 'menu') {
+                audioToggleBtn.classList.remove('hidden');
+            } else {
+                audioToggleBtn.classList.add('hidden');
+            }
+
+            [mainMenu, gameOverScreen, missionCompleteScreen, finalCongratsScreen, inGameUI, howToPlayScreen].forEach(el => el.classList.add('hidden'));
+            
+            if (newState === 'menu') {
+                mainMenu.classList.remove('hidden');
+                if (!isMuted && audioContextPrimed) {
+                     sounds.menu.currentTime = 0;
+                     sounds.menu.play();
+                }
+            }
+            if (newState === 'gameOver') {
+                gameOverScreen.classList.remove('hidden');
+                playSound(sounds.missionFailed);
+            }
+            if (newState === 'finalWin' || newState === 'win') {
+                if (newState === 'finalWin') {
+                    finalCongratsScreen.classList.remove('hidden');
+                } else {
+                    missionCompleteScreen.classList.remove('hidden');
+                    levelCompleteText.textContent = `Level '${difficultySettings[currentLevel].name}' Cleared.`;
+                    nextMissionBtn.classList.toggle('hidden', !difficultySettings[currentLevel + 1]);
+                }
+                playSound(sounds.missionSuccess);
+            }
+            if (newState === 'playing') {
+                inGameUI.classList.remove('hidden');
+                 if (!isMuted && audioContextPrimed) {
+                    sounds.inGame.currentTime = 0;
+                    sounds.inGame.play();
+                 }
+            }
+        }
+
+        // CHANGED: Implemented a debounce function to prevent rapid-firing of the resize event.
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            worldWidth = canvas.width * 5;
+            worldHeight = canvas.height * 2;
+            createStars();
+            createMenuStars();
+            if (imagesLoaded === imagesToLoad) {
+                createMenuPlanets();
+            }
+        }
+        
+        function createMenuStars() {
+            menuStars = [];
+            for (let i = 0; i < 250; i++) {
+                menuStars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 1.5,
+                    speed: Math.random() * 0.5 + 0.2
+                });
+            }
+        }
+        
+        function createMenuPlanets() {
+            menuPlanets = [];
+            if (planetImages.length === 0) return;
+            const numPlanets = 6;
+            for (let i = 0; i < numPlanets; i++) {
+                menuPlanets.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 90 + 30,
+                    image: planetImages[Math.floor(Math.random() * planetImages.length)],
+                    speedX: (Math.random() - 0.5) * 0.2,
+                    speedY: (Math.random() - 0.5) * 0.2,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.001
+                });
+            }
+        }
+        
+        function updateMenuBackground() {
+            menuStars.forEach(star => {
+                star.y += star.speed;
+                if (star.y > canvas.height + star.radius) {
+                    star.y = -star.radius;
+                    star.x = Math.random() * canvas.width;
+                }
+            });
+            menuPlanets.forEach(p => {
+                p.x += p.speedX;
+                p.y += p.speedY;
+                p.rotation += p.rotationSpeed;
+                if (p.x < -p.radius) p.x = canvas.width + p.radius;
+                if (p.x > canvas.width + p.radius) p.x = -p.radius;
+                if (p.y < -p.radius) p.y = canvas.height + p.radius;
+                if (p.y > canvas.height + p.radius) p.y = -p.radius;
+            });
+        }
+
+        function drawMenuBackground() {
+            ctx.globalAlpha = 0.8;
+            menuPlanets.forEach(p => {
+                if (p.image && p.image.complete) {
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rotation);
+                    ctx.drawImage(p.image, -p.radius, -p.radius, p.radius * 2, p.radius * 2);
+                    ctx.restore();
+                }
+            });
+            ctx.globalAlpha = 1.0;
+            ctx.save();
+            ctx.fillStyle = "#00f3ff";
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#00f3ff";
+            menuStars.forEach(star => {
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.restore();
+        }
+
+        function createStars() {
+            stars = [];
+            for (let i = 0; i < 2000; i++) {
+                stars.push({ x: Math.random() * worldWidth, y: Math.random() * worldHeight, radius: Math.random() * 1.5, alpha: Math.random() });
+            }
+        }
+        
+        function initLevel(level) {
+            const settings = difficultySettings[level];
+            if (!settings) return;
+            levelDisplay.textContent = `Level: ${settings.name}`;
+            G = 0.08 * settings.gravityMultiplier;
+            rocket = createRocket();
+            rocket.y = worldHeight / 2;
+            planets = []; particles = []; blackHoles = []; orbs = [];
+            const maxPlacementTries = 100;
+            const minBlackHoleDist = 400;
+
+            for (let i = 0; i < settings.blackHoleCount; i++) {
+                let newBlackHole, validPosition = false, tries = 0;
+                while (!validPosition && tries < maxPlacementTries) {
+                    tries++;
+                    newBlackHole = { 
+                        x: worldWidth * (Math.random() * 0.7 + 0.15), 
+                        y: worldHeight * (Math.random() * 0.6 + 0.2), 
+                        radius: 50, 
+                        mass: 25000 
+                    };
+                    validPosition = !blackHoles.some(bh => Math.hypot(bh.x - newBlackHole.x, bh.y - newBlackHole.y) < minBlackHoleDist);
+                }
+                if (validPosition) blackHoles.push(newBlackHole);
+            }
+
+            for (let i = 0; i < settings.planetCount; i++) {
+                let newPlanet, validPosition = false, tries = 0;
+                while (!validPosition && tries < maxPlacementTries) {
+                    tries++;
+                    newPlanet = createPlanet();
+                    validPosition = !planets.some(p => Math.hypot(p.x - newPlanet.x, p.y - newPlanet.y) < (p.radius + newPlanet.radius) * 2.2) &&
+                                  !blackHoles.some(bh => Math.hypot(bh.x - newPlanet.x, bh.y - newPlanet.y) < (bh.radius * 3.5 + newPlanet.radius));
+                }
+                if (validPosition) planets.push(newPlanet);
+            }
+            
+            portal = { x: worldWidth - 150, y: worldHeight / 2, radius: settings.portalSize };
+            
+            const orbSafetyBuffer = 30;
+            for (let i = 0; i < settings.orbCount; i++) {
+                let newOrb, validPosition = false, tries = 0;
+                while (!validPosition && tries < maxPlacementTries) {
+                    tries++;
+                    newOrb = createOrb();
+                    validPosition = !planets.some(p => Math.hypot(p.x - newOrb.x, p.y - newOrb.y) < p.radius + newOrb.radius + orbSafetyBuffer) &&
+                                  !blackHoles.some(bh => Math.hypot(bh.x - newOrb.x, bh.y - newOrb.y) < bh.radius * 3.5 + newOrb.radius + orbSafetyBuffer);
+                }
+                if (validPosition) orbs.push(newOrb);
+            }
+            camera.x = 0;
+            camera.y = (worldHeight / 2) - (canvas.height / 2);
+            updateOrbUI();
+        }
+
+        function setupInputListeners() {
+            audioToggleBtn.addEventListener('click', toggleAudio);
+
+            allButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    primeAudioContext(); // Prime audio on first button click
+                    playSound(sounds.beep)
+                });
+            });
+
+            window.addEventListener('keydown', e => {
+                if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') CONTROLS.up = true;
+                if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's') CONTROLS.down = true;
+                if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') CONTROLS.left = true;
+                if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') CONTROLS.right = true;
+                if (e.key === ' ' && rocket?.orbs > 0) CONTROLS.boost = true; // Added optional chaining for safety
+                if (e.key === 'Shift') CONTROLS.fineControl = true;
+                if (e.key === 'Enter' && gameState === 'menu') startBtn.click();
+            });
+            window.addEventListener('keyup', e => {
+                if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') CONTROLS.up = false;
+                if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's') CONTROLS.down = false;
+                if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') CONTROLS.left = false;
+                if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') CONTROLS.right = false;
+                if (e.key === ' ') CONTROLS.boost = false;
+                if (e.key === 'Shift') CONTROLS.fineControl = false;
+            });
+
+            // CHANGED: Reworked touch input to prevent "sticky buttons" bug on mobile.
+            const setupControlButton = (btn, key) => {
+                const start = (e) => { e.preventDefault(); CONTROLS[key] = true; };
+                const end = (e) => { e.preventDefault(); CONTROLS[key] = false; };
+                btn.addEventListener('mousedown', start);
+                btn.addEventListener('touchstart', start, { passive: false });
+            };
+
+            setupControlButton(upBtn, 'up');
+            setupControlButton(downBtn, 'down');
+            setupControlButton(leftBtn, 'left');
+            setupControlButton(rightBtn, 'right');
+
+            // Global listeners to ensure controls are released
+            window.addEventListener('mouseup', () => { CONTROLS.up = CONTROLS.down = CONTROLS.left = CONTROLS.right = false; });
+            window.addEventListener('touchend', () => { CONTROLS.up = CONTROLS.down = CONTROLS.left = CONTROLS.right = false; });
+            
+            // Special handling for boost
+            const handleBoost = (down) => { if (down && rocket?.orbs > 0) CONTROLS.boost = true; else CONTROLS.boost = false; };
+            boostBtn.addEventListener('mousedown', () => handleBoost(true));
+            boostBtn.addEventListener('mouseup', () => handleBoost(false));
+            boostBtn.addEventListener('touchstart', e => { e.preventDefault(); handleBoost(true); }, { passive: false });
+            boostBtn.addEventListener('touchend', e => { e.preventDefault(); handleBoost(false); });
+        }
+        
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 50; i++) {
+                const lifespan = Math.random() * 50 + 50;
+                particles.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, radius: Math.random() * 3 + 1, lifespan, initialLifespan: lifespan, color, type: 'explosion' });
+            }
+        }
+
+        function createOrbDisintegrationEffect(x, y) {
+            const colors = ['#FFD700', '#FFA500', '#FFC400'];
+            for (let i = 0; i < 20; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 2 + 1;
+                const lifespan = Math.random() * 50 + 40;
+                particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, radius: Math.random() * 3 + 1.5, lifespan, initialLifespan: lifespan, type: 'bubble', color: colors[Math.floor(Math.random() * colors.length)] });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.lifespan--;
+                if (p.type === 'bubble') { p.vx *= 0.98; p.vy *= 0.98; p.radius *= 0.99; }
+                if (p.lifespan <= 0 || (p.type === 'bubble' && p.radius < 0.5)) { particles.splice(i, 1); }
+            }
+        }
+
+        function update() {
+            updateParticles();
+            
+            if (gameState === 'menu') {
+                updateMenuBackground();
+            }
+
+            if (gameState !== 'playing') return;
+
+            if (rocket.crashed && rocket.gameOverTimer > 0) {
+                rocket.gameOverTimer--;
+                if (rocket.gameOverTimer === 0) {
+                    setGameState('gameOver');
+                }
+            }
+
+            const currentThrust = CONTROLS.fineControl ? rocket.thrust / 4 : rocket.thrust;
+            if (CONTROLS.up) rocket.vy -= currentThrust;
+            if (CONTROLS.down) rocket.vy += currentThrust;
+            if (CONTROLS.left) rocket.vx -= currentThrust;
+            if (CONTROLS.right) rocket.vx += currentThrust;
+
+            rocket.vx *= 0.98; rocket.vy *= 0.98;
+            
+            if (CONTROLS.boost && rocket.orbs > 0 && !rocket.boostActive) {
+                rocket.boostActive = true; rocket.boostTimer = 100; rocket.orbs--;
+                updateOrbUI(); CONTROLS.boost = false;
+                playSound(sounds.boost);
+            }
+
+            if (rocket.boostActive) {
+                rocket.boostTimer--; if (rocket.boostTimer <= 0) rocket.boostActive = false;
+                rocket.vx += 0.0896;
+            }
+
+            const bodies = [...planets, ...blackHoles];
+            bodies.forEach(body => {
+                const dx = body.x - rocket.x, dy = body.y - rocket.y;
+                const distSq = dx * dx + dy * dy, dist = Math.sqrt(distSq);
+                if (dist > body.radius) {
+                    let force = (G * body.mass) / distSq;
+                    if ((body.image || body.mass > 20000) && dist < body.radius * 3) force *= 2.5;
+                    const angle = Math.atan2(dy, dx);
+                    const forceModifier = rocket.boostActive ? -2 : 1;
+                    rocket.vx += Math.cos(angle) * force * forceModifier;
+                    rocket.vy += Math.sin(angle) * force * forceModifier;
+                }
+            });
+
+            const portalDx = portal.x - rocket.x, portalDy = portal.y - rocket.y;
+            const portalDistSq = portalDx * portalDx + portalDy * portalDy;
+            if (portalDistSq > 1 && portalDistSq < Math.pow(portal.radius * 20, 2)) {
+                const portalForce = (G * 4000) / portalDistSq;
+                const angle = Math.atan2(portalDy, portalDx);
+                const forceModifier = rocket.boostActive ? -2 : 1;
+                rocket.vx += Math.cos(angle) * portalForce * forceModifier;
+                rocket.vy += Math.sin(angle) * portalForce * forceModifier;
+            }
+
+            rocket.x += rocket.vx; rocket.y += rocket.vy;
+            rocket.rotation = Math.atan2(rocket.vy, rocket.vx);
+
+            const topBound = camera.y + rocket.height / 2, bottomBound = camera.y + canvas.height - rocket.height / 2;
+            const leftBound = rocket.width / 2, rightBound = worldWidth - rocket.width / 2;
+            if (rocket.y < topBound) { rocket.y = topBound; rocket.vy = 0; }
+            if (rocket.y > bottomBound) { rocket.y = bottomBound; rocket.vy = 0; }
+            if (rocket.x < leftBound) { rocket.x = leftBound; rocket.vx = 0; }
+            if (rocket.x > rightBound) { rocket.x = rightBound; rocket.vx = 0; }
+
+            bodies.forEach(body => {
+                if (!rocket.crashed && Math.hypot(body.x - rocket.x, body.y - rocket.y) < body.radius + rocket.width / 2) {
+                    playSound(sounds.explosion);
+                    createExplosion(rocket.x, rocket.y, 'orange');
+                    rocket.crashed = true;
+                    rocket.gameOverTimer = 30; 
+                }
+            });
+            
+            orbs.forEach(orb => {
+                 if (!orb.collected && Math.hypot(orb.x - rocket.x, orb.y - rocket.y) < orb.radius + rocket.height / 2) {
+                       orb.collected = true; createOrbDisintegrationEffect(orb.x, orb.y);
+                       rocket.orbs++; updateOrbUI();
+                       playSound(sounds.orb);
+                 }
+            });
+
+            if (!rocket.crashed && Math.hypot(portal.x - rocket.x, portal.y - rocket.y) < portal.radius) {
+                playSound(sounds.portal);
+                setGameState(currentLevel === 3 ? 'finalWin' : 'win');
+            }
+
+            const targetX = rocket.x - canvas.width / 2;
+            camera.x += (targetX - camera.x) * camera.smoothing;
+            camera.x = Math.max(0, Math.min(camera.x, worldWidth - canvas.width));
+        }
+
+        function draw() {
+            if (gameState === 'menu') {
+                ctx.fillStyle = "#000814";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                drawMenuBackground();
+            } else {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (bgImage.complete && bgImage.naturalHeight !== 0) {
+                    const canvasAR = canvas.width / canvas.height, imageAR = bgImage.width / bgImage.height;
+                    let sx, sy, sWidth, sHeight;
+                    if (imageAR > canvasAR) {
+                        sHeight = bgImage.height; sWidth = sHeight * canvasAR;
+                        sx = (bgImage.width - sWidth) / 2; sy = 0;
+                    } else {
+                        sWidth = bgImage.width; sHeight = sWidth / canvasAR;
+                        sx = 0; sy = (bgImage.height - sHeight) / 2;
+                    }
+                    ctx.drawImage(bgImage, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+                }
+                ctx.save();
+                ctx.translate(-camera.x, -camera.y);
+                drawStars(); drawParticles();
+                if (gameState.startsWith('play') || gameState === 'win' || gameState === 'gameOver') {
+                    planets.forEach(drawPlanet); blackHoles.forEach(drawBlackHole); drawPortal(); orbs.forEach(drawOrb);
+                    if (!rocket.crashed) drawRocket();
+                }
+                ctx.restore();
+                if (gameState === 'playing') { drawPortalIndicator(); updateVelocityUI(); }
+            }
+        }
+        
+        function drawStars() {
+            ctx.save();
+            stars.forEach(star => {
+                ctx.beginPath(); ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha})`; ctx.fill();
+            });
+            ctx.restore();
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.save(); ctx.globalAlpha = p.lifespan / p.initialLifespan;
+                if (p.type === 'bubble') {
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 8; ctx.fill();
+                } else {
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color; ctx.fill();
+                }
+                ctx.restore();
+            });
+        }
+        
+        function drawPlanet(p) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.setLineDash([5, 15]);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.arc(p.x, p.y, p.radius * 3, 0, Math.PI * 2);
+            ctx.stroke();
+            if (p.image && p.image.complete && p.image.naturalHeight !== 0) {
+                 ctx.drawImage(p.image, p.x - p.radius, p.y - p.radius, p.radius * 2, p.radius * 2);
+            }
+            ctx.restore();
+        }
+        
+        function drawPortalIndicator() {
+            const screenX = portal.x - camera.x, screenY = portal.y - camera.y;
+            if (screenX < 0 || screenX > canvas.width || screenY < 0 || screenY > canvas.height) {
+                const angle = Math.atan2(screenY - canvas.height / 2, screenX - canvas.width / 2);
+                const padding = 30;
+                const indicatorX = Math.max(padding, Math.min(canvas.width - padding, canvas.width / 2 + Math.cos(angle) * (canvas.width/2 - padding)));
+                const indicatorY = Math.max(padding, Math.min(canvas.height - padding, canvas.height / 2 + Math.sin(angle) * (canvas.height/2 - padding)));
+                ctx.save(); ctx.translate(indicatorX, indicatorY); ctx.rotate(angle);
+                ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-10, -10); ctx.lineTo(-10, 10); ctx.closePath();
+                ctx.fillStyle = 'cyan'; ctx.shadowColor = 'cyan'; ctx.shadowBlur = 10; ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function drawBlackHole(bh) {
+            ctx.save();
+            const pulseFactor = (Math.sin(Date.now() / 800) + 1) / 2;
+            
+            const cloudRadius = bh.radius * (1.8 + pulseFactor * 0.5);
+            
+            const gradient = ctx.createRadialGradient(bh.x, bh.y, bh.radius * 0.5, bh.x, bh.y, cloudRadius);
+            gradient.addColorStop(0, 'rgba(0, 200, 255, 0.6)');
+            gradient.addColorStop(1, 'rgba(0, 200, 255, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 25;
+
+            ctx.beginPath();
+            ctx.arc(bh.x, bh.y, cloudRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+            
+            if (blackHoleImage.complete && blackHoleImage.naturalHeight !== 0) {
+                 const drawSize = bh.radius * 2;
+                 ctx.drawImage(blackHoleImage, bh.x - (drawSize / 2), bh.y - (drawSize / 2), drawSize, drawSize);
+            }
+            ctx.restore();
+        }
+
+        function drawPortal() {
+            ctx.save(); ctx.beginPath();
+            const gradient = ctx.createRadialGradient(portal.x, portal.y, portal.radius * 0.5, portal.x, portal.y, portal.radius * 1.5);
+            gradient.addColorStop(0, 'white'); gradient.addColorStop(0.6, 'cyan'); gradient.addColorStop(1, 'rgba(0, 255, 255, 0)');
+            ctx.fillStyle = gradient; ctx.arc(portal.x, portal.y, portal.radius * 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+
+        function drawOrb(orb) {
+            if (orb.collected) return;
+            ctx.save(); ctx.beginPath();
+            const gradient = ctx.createRadialGradient(orb.x, orb.y, 1, orb.x, orb.y, orb.radius);
+            gradient.addColorStop(0, 'rgba(255, 255, 150, 1)'); gradient.addColorStop(1, 'rgba(255, 165, 0, 0.5)');
+            ctx.fillStyle = gradient; ctx.arc(orb.x, orb.y, orb.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowColor = 'yellow'; ctx.shadowBlur = 15; ctx.fill();
+            ctx.restore();
+        }
+
+        function drawRocket() {
+            if (!rocketImage.complete || rocketImage.naturalHeight === 0) return;
+            ctx.save(); ctx.translate(rocket.x, rocket.y);
+            ctx.rotate(rocket.rotation + Math.PI / 2);
+            
+            const flameLength = 25, flameWidth = 10;
+            let flameColor = '#ffa500';
+            const drawFlame = (x, y, length, width, angle) => {
+                ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+                ctx.beginPath(); ctx.moveTo(0, -width / 2); ctx.lineTo(0, width / 2); ctx.lineTo(length, 0); ctx.closePath();
+                ctx.fillStyle = flameColor; ctx.shadowColor = flameColor; ctx.shadowBlur = 15; ctx.fill();
+                ctx.restore();
+            };
+            if (rocket.boostActive) {
+                flameColor = '#00ffff';
+                drawFlame(0, rocket.height / 2, 40, 14, Math.PI / 2);
+            } else if (CONTROLS.up || CONTROLS.down || CONTROLS.left || CONTROLS.right) {
+                drawFlame(0, rocket.height / 2, flameLength, flameWidth, Math.PI / 2);
+            }
+            
+            ctx.drawImage(rocketImage, -rocket.width / 2, -rocket.height / 2, rocket.width, rocket.height);
+            ctx.restore();
+        }
+
+        function updateOrbUI() {
+            orbCounter.textContent = `Orbs: ${rocket.orbs}`;
+            boostBtn.classList.toggle('active', rocket.orbs > 0);
+        }
+        
+        function updateVelocityUI() {
+            const speed = Math.hypot(rocket.vx, rocket.vy) * 100;
+            velocityDisplay.textContent = `Velocity: ${speed.toFixed(0)} km/s`;
+        }
+
+        function gameLoop() {
+            update();
+            draw(); 
+            requestAnimationFrame(gameLoop);
+        }
+
+        // CHANGED: Wrapped the resize listener in the debounce function
+        window.addEventListener('resize', debounce(resizeCanvas, 250));
+        
+        startBtn.addEventListener('click', () => {
+            difficultySelect.classList.toggle('max-h-0');
+            difficultySelect.classList.toggle('sm:max-h-48');
+            difficultySelect.classList.toggle('max-h-96'); // Taller for stacked mobile view
+            difficultySelect.classList.toggle('pt-4');
+        });
+        difficultyButtons.forEach(button => button.addEventListener('click', () => {
+            currentLevel = parseInt(button.dataset.level, 10);
+            if (currentLevel) { initLevel(currentLevel); setGameState('playing'); }
+        }));
+        tryAgainBtn.addEventListener('click', () => { initLevel(currentLevel); setGameState('playing'); });
+        quitBtn.addEventListener('click', () => setGameState('menu'));
+        nextMissionBtn.addEventListener('click', () => {
+             currentLevel++;
+             if (difficultySettings[currentLevel]) { initLevel(currentLevel); setGameState('playing'); }
+        });
+        repeatMissionBtn.addEventListener('click', () => { initLevel(currentLevel); setGameState('playing'); });
+        quitMissionBtn.addEventListener('click', () => setGameState('menu'));
+        finalQuitBtn.addEventListener('click', () => setGameState('menu'));
+        howToPlayBtn.addEventListener('click', () => { mainMenu.classList.add('hidden'); howToPlayScreen.classList.remove('hidden'); });
+        backBtn.addEventListener('click', () => { howToPlayScreen.classList.add('hidden'); mainMenu.classList.remove('hidden'); });
+
+        resizeCanvas();
+        setupInputListeners();
+        setGameState('menu');
+        gameLoop();
+    </script>
+</body>
+</html>
