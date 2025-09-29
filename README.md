@@ -1,24 +1,22 @@
-Here is the information from the images formatted into a visually appealing Markdown file, suitable for a GitHub README.
-
-# Stellar Voyager 🚀🌌
+# Stellar Voyager 🚀
 
 *Made for: IIITN Game Jam 2025, hosted by Dimensions Club*
 ---
-## Team Name: Caffeine Coders ☕💻
+## Team Name: Caffeine Coders 
 
 A 2D Sci-Fi Physics Arcade / Puzzler
 
 **Stellar Voyager** is a challenging, skill-based 2D game where players pilot a lone starship through treacherous gravitational fields. The gameplay revolves around mastering **momentum-based physics** with precise thruster controls to navigate planets and black holes. Players must collect scarce **Energy Orbs** to power a unique **anti-gravity boost**, turning each level into a high-stakes puzzle that tests skill and strategic thinking.
 
 ---
-## Story and Narrative Synopsis 📜
+## Story and Narrative Synopsis 
 
 In the year **2242**, the outer colonies have fallen silent. A mysterious and expanding gravitational anomaly is tearing through star systems, threatening all of humanity. Normal ships are helpless, but a single pilot, a former daredevil from the now-devoured colonies is tasked with flying the **XV-Stellar Voyager**, an experimental prototype with a unique anti-gravity drive.
 
 Your mission is a desperate flight into the heart of the chaos to collect scattered **Energy Orbs** - the last remnants of dying stars. You must use the ship's boost to defy the crushing gravity of planets and black holes, navigating to the stable **Exit Portal** at the anomaly's center to unleash a pulse that can save what's left of the galaxy.
 
 ---
-## How the Story Enhances Gameplay ✨
+## How the Story Enhances Gameplay 
 
 The narrative is designed to give every gameplay mechanic a clear purpose:
 
@@ -27,7 +25,7 @@ The narrative is designed to give every gameplay mechanic a clear purpose:
 * The **Exit Portal** isn't just a finish line, it is the key to stabilizing the anomaly and saving the colonies.
 
 ---
-## Controls and User Interface 🎮
+## Controls and User Interface 
 
 The controls and UI are designed to be intuitive and clean, ensuring an accessible and immersive experience.
 
@@ -48,7 +46,7 @@ The UI features a sleek, **retro-futuristic neon theme**, using the **Orbitron f
 * Sound is muted by default and can be enabled with a single click in the top-right corner.
 
 ---
-## Technical Details ⚙️
+## Technical Details 
 
 ### Development Technologies
 
@@ -63,7 +61,7 @@ The UI features a sleek, **retro-futuristic neon theme**, using the **Orbitron f
 * Compressed image assets for fast load times.
 * Tested for cross-browser and mobile compatibility.
 
-### Core Physics Engine 🌌
+### Core Physics Engine 
 
 The game is powered by a **custom engine** that simulates momentum-based space flight.
 
@@ -81,7 +79,7 @@ The game is powered by a **custom engine** that simulates momentum-based space f
 | Team Member | Kapil Yadav | +91 8588935054, `kapil26062019@gmail.com` |
 
 ---
-## Asset Credits 🎨🎵
+## Asset Credits 
 
 ### Visual Assets
 
@@ -98,4 +96,4 @@ The game is powered by a **custom engine** that simulates momentum-based space f
 * **Mission Success/Fail Sounds:** [https://opengameart.org/content/ui-accept-or-forward](https://opengameart.org/content/ui-accept-or-forward)
 
 ---
-## THANK YOU FOR PLAYING! 🙏
+## THANK YOU FOR PLAYING! 
