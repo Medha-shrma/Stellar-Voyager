@@ -96,4 +96,11 @@ The game is powered by a **custom engine** that simulates momentum-based space f
 * **Mission Success/Fail Sounds:** [https://opengameart.org/content/ui-accept-or-forward](https://opengameart.org/content/ui-accept-or-forward)
 
 ---
+## Gameplay Video 🎥
+
+Experience the challenge of momentum-based space flight and the tactical use of the anti-gravity boost!
+
+**https://youtu.be/jmdne_I1Wu0?si=1qtk5V5rwou4qW-X**
+
+---
 ## THANK YOU FOR PLAYING! 
