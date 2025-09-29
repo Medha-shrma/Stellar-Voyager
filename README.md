@@ -1,3 +1,5 @@
+Team Name-Caffeine Coders
+
 # Stellar-Voyager
 Stellar Voyager is a challenging, skill-based 2D game where players pilot a lone starship through treacherous gravitational fields. The core gameplay revolves around mastering momentum-based physics with precise thruster controls to navigate planets, asteroids, and black holes. Players must collect scarce Energy Orbs to power a unique anti-gravity boost, transforming each level into a high-stakes puzzle that demands skill, reflexes, and strategic thinking.
 
